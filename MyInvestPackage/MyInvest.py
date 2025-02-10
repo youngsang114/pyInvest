@@ -43,11 +43,13 @@ class StockAnalyzer:
     - rsi()
     - plot_analysis()
     '''
-    def __init__(self, stock_name, start_date=None, end_date=None):
+    def __init__(self, stock_name, start_date=None, end_date=None, c_code ='K',index = False):
         self.libs = LibraryLoader.get_libs()  # 라이브러리 불러오기
         self.stock_name = stock_name
         self.start_date = start_date
         self.end_date = end_date
+        self.c_code = c_code
+        self.index = index
         self.df = self.stock_data_reader()
 
     def stock_listing(self):
@@ -74,28 +76,38 @@ class StockAnalyzer:
         return df_info
     
     def stock_data_reader(self):
-        today_year = self.libs["datetime"].datetime.today().year
-        today_month = self.libs["datetime"].datetime.today().month
-        today_day = self.libs["datetime"].datetime.today().day
-    
-        # 2. KRX 종목 DataFrame 존재 여부 확인
-        if self.libs["os"].path.isfile("krx_df_{}_{}_{}.csv".format(today_year, today_month, today_day)):
-            krx_df = self.libs["pd"].read_csv("krx_df_{}_{}_{}.csv".format(today_year, today_month, today_day), index_col = 0)
-        else:
-            krx_df = self.stock_listing()
-            krx_df.to_csv("krx_df_{}_{}_{}.csv".format(today_year, today_month, today_day))
-        
-        # 3. 종목 코드 찾기
-        if self.stock_name in krx_df['Name'].values:
-            symbol = krx_df[krx_df['Name'] == self.stock_name]['Symbol'].values[0]
-        else:
-            print("There is no name in KRX")
-            raise "Threr is no name in KRX" # 함수가 중간에 멈추고 -> error 발생
-        
-        # 찾은 심볼을 가지고 -> 시작, 끝 날자의 상장 주식 정보를 반환함 !
-        stock_df = self.libs["fdr"].DataReader(symbol, self.start_date, self.end_date)
 
-        return stock_df
+        if self.c_code == "A":
+            stock_df = self.libs["fdr"].DataReader(self.stock_name, self.start_date, self.end_date)
+            return stock_df
+    
+        elif (self.c_code =="K") and (self.index == True):
+            stock_df = self.libs["fdr"].DataReader("KS11", self.start_date, self.end_date)
+            return stock_df
+        
+        else:
+            today_year = self.libs["datetime"].datetime.today().year
+            today_month = self.libs["datetime"].datetime.today().month
+            today_day = self.libs["datetime"].datetime.today().day
+
+            # 2. KRX 종목 DataFrame 존재 여부 확인
+            if self.libs["os"].path.isfile("krx_df_{}_{}_{}.csv".format(today_year, today_month, today_day)):
+                krx_df = self.libs["pd"].read_csv("krx_df_{}_{}_{}.csv".format(today_year, today_month, today_day), index_col = 0)
+            else:
+                krx_df = self.stock_listing()
+                krx_df.to_csv("krx_df_{}_{}_{}.csv".format(today_year, today_month, today_day))
+            
+            # 3. 종목 코드 찾기
+            if self.stock_name in krx_df['Name'].values:
+                symbol = krx_df[krx_df['Name'] == self.stock_name]['Symbol'].values[0]
+            else:
+                print("There is no name in KRX")
+                raise "Threr is no name in KRX" # 함수가 중간에 멈추고 -> error 발생
+            
+            # 찾은 심볼을 가지고 -> 시작, 끝 날자의 상장 주식 정보를 반환함 !
+            stock_df = self.libs["fdr"].DataReader(symbol, self.start_date, self.end_date)
+
+            return stock_df
         
     def calculate_mdd(self):
         
